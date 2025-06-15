@@ -56,7 +56,6 @@ var (
 )
 
 func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, profile Profile, traffic Traffic, failpointInjected <-chan report.FailpointInjection, baseTime time.Time, ids identity.Provider) []report.ClientReport {
-	mux := sync.Mutex{}
 	endpoints := clus.EndpointsGRPC()
 
 	lm := identity.NewLeaseIDStorage()
@@ -73,25 +72,26 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 
 	keyStore := NewKeyStore(10, "key")
 
+	clientSet := client.NewSet(ids, baseTime)
+	defer clientSet.Close()
+
 	lg.Info("Start traffic")
 	startTime := time.Since(baseTime)
 	for i := 0; i < profile.ClientCount; i++ {
 		wg.Add(1)
-		c, nerr := client.NewRecordingClient([]string{endpoints[i%len(endpoints)]}, ids, baseTime)
+
+		c, nerr := clientSet.NewClient([]string{endpoints[i%len(endpoints)]})
 		require.NoError(t, nerr)
 		go func(c *client.RecordingClient) {
 			defer wg.Done()
 			defer c.Close()
 
 			traffic.RunTrafficLoop(ctx, c, limiter, ids, lm, nonUniqueWriteLimiter, keyStore, finish)
-			mux.Lock()
-			reports = append(reports, c.Report())
-			mux.Unlock()
 		}(c)
 	}
 	if !profile.ForbidCompaction {
 		wg.Add(1)
-		c, nerr := client.NewRecordingClient(endpoints, ids, baseTime)
+		c, nerr := clientSet.NewClient(endpoints)
 		if nerr != nil {
 			t.Fatal(nerr)
 		}
@@ -105,9 +105,6 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			}
 
 			traffic.RunCompactLoop(ctx, c, compactionPeriod, finish)
-			mux.Lock()
-			reports = append(reports, c.Report())
-			mux.Unlock()
 		}(c)
 	}
 	var fr *report.FailpointInjection
@@ -125,12 +122,12 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 
 	time.Sleep(time.Second)
 	// Ensure that last operation succeeds
-	cc, err := client.NewRecordingClient(endpoints, ids, baseTime)
+	cc, err := clientSet.NewClient(endpoints)
 	require.NoError(t, err)
 	defer cc.Close()
 	_, err = cc.Put(ctx, "tombstone", "true")
 	require.NoErrorf(t, err, "Last operation failed, validation requires last operation to succeed")
-	reports = append(reports, cc.Report())
+	reports = append(reports, clientSet.Reports()...)
 
 	totalStats := CalculateStats(reports, startTime, endTime)
 	beforeFailpointStats := CalculateStats(reports, startTime, fr.Start)
