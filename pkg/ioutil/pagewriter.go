@@ -43,7 +43,11 @@ type PageWriter struct {
 // NewPageWriter creates a new PageWriter. pageBytes is the number of bytes
 // to write per page. pageOffset is the starting offset of io.Writer.
 func NewPageWriter(w io.Writer, pageBytes, pageOffset int) *PageWriter {
-	verify.Assert(pageBytes > 0, "invalid pageBytes (%d) value, it must be greater than 0", pageBytes)
+	verify.Verify("invalid pageBytes value, it must be greater than 0", func() (bool, map[string]any) {
+		return pageBytes <= 0, map[string]any{
+			"pageBytes": pageBytes,
+		}
+	})
 	return &PageWriter{
 		w:                 w,
 		pageOffset:        pageOffset,

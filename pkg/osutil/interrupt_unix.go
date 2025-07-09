@@ -48,7 +48,7 @@ func RegisterInterruptHandler(h InterruptHandler) {
 
 // HandleInterrupts calls the handler functions on receiving a SIGINT or SIGTERM.
 func HandleInterrupts(lg *zap.Logger) {
-	verify.Assert(lg != nil, "the logger should not be nil")
+	verify.Verify("the logger should not be nil", func() (bool, map[string]any) { return lg == nil, nil })
 	notifier := make(chan os.Signal, 1)
 	signal.Notify(notifier, syscall.SIGINT, syscall.SIGTERM)
 

@@ -6,6 +6,15 @@ FROM golang:$GO_VERSION
 # cloning etcd
 ARG REF=main
 RUN git clone --depth=1 https://github.com/etcd-io/etcd.git --branch=${REF} /etcd
+
+# replace verify with antithesis
+WORKDIR /etcd/client/pkg/verify
+RUN if [ -f verify.go ]; then \
+        sed -i 's|// antithesis_import_assert_placeholder|"github.com/antithesishq/antithesis-sdk-go/assert"|' ./verify.go && \
+        sed -i '/antithesis_verifier_placeholder_start/,/antithesis_verifier_placeholder_end/{s/verifier(/assert.Always(/g}' ./verify.go; \
+    fi
+WORKDIR /etcd/client/pkg
+RUN go mod tidy
 WORKDIR /etcd
 
 # setup go mod

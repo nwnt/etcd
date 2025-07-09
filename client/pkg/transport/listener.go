@@ -218,7 +218,7 @@ func (info TLSInfo) Empty() bool {
 }
 
 func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertValidity uint, additionalUsages ...x509.ExtKeyUsage) (TLSInfo, error) {
-	verify.Assert(lg != nil, "nil log isn't allowed")
+	verify.Verify("nil log isn't allowed", func() (bool, map[string]any) { return lg == nil, nil })
 
 	var err error
 	info := TLSInfo{Logger: lg}

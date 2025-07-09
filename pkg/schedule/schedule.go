@@ -89,7 +89,7 @@ type fifo struct {
 // NewFIFOScheduler returns a Scheduler that schedules jobs in FIFO
 // order sequentially
 func NewFIFOScheduler(lg *zap.Logger) Scheduler {
-	verify.Assert(lg != nil, "the logger should not be nil")
+	verify.Verify("the logger should not be nil", func() (bool, map[string]any) { return lg == nil, nil })
 
 	f := &fifo{
 		resume: make(chan struct{}, 1),

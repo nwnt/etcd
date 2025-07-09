@@ -464,7 +464,7 @@ func (b *backend) Defrag() error {
 }
 
 func (b *backend) defrag() error {
-	verify.Assert(b.lg != nil, "the logger should not be nil")
+	verify.Verify("the logger should not be nil", func() (bool, map[string]any) { return b.lg == nil, nil })
 	now := time.Now()
 	isDefragActive.Set(1)
 	defer isDefragActive.Set(0)
