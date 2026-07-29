@@ -100,6 +100,11 @@ func (tr *storeTxnCommon) rangeKeys(ctx context.Context, key, end []byte, curRev
 				ModRevision:    modifies[i].Main,
 				CreateRevision: creates[i].Main,
 				Version:        versions[i],
+				Lease: int64(
+					tr.s.le.GetLease(lease.LeaseItem{
+						Key: string(keys[i]),
+					}),
+				),
 			}
 		}
 		return &RangeResult{KVs: kvs, Count: total, Rev: curRev}, nil
